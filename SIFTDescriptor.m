@@ -10,7 +10,7 @@ function descriptors = SIFTDescriptor(pyramid, keyPt, keyPtScale)
 %   keyPt: N * 2 matrix, each row is a key point pixel location in
 %   pyramid{round(scale)}. So pyramid{round(scale)}(y,x) is the center of the keypoint
 %
-%   scale: N * 1 matrix, each entry holds the index in the Gaussian
+%   keyPtScale: N * 1 matrix, each entry holds the index in the Gaussian
 %   pyramid for the keypoint. Earlier code interpolates things, so this is a
 %   double, but we'll just round it to an integer.
 %
@@ -40,7 +40,7 @@ function descriptors = SIFTDescriptor(pyramid, keyPt, keyPtScale)
     num_bins = 8;   
    
     % Initialize descriptors to zero
-    descriptors = zeros(N, grid_size*grid_size*num_bins);
+    descriptors = zeros(N, grid_size*grid_size*num_bins); 
     
  
     %====================================================================
@@ -62,10 +62,7 @@ function descriptors = SIFTDescriptor(pyramid, keyPt, keyPtScale)
         grad_theta = cell(length(pyramid),1);
         
         [grad_mag,grad_theta] = ComputeGradient(pyramid);
-    
-	
-	
-  
+        
     % Iterate over all keypoints
     for i = 1 : N
 
@@ -177,10 +174,22 @@ function [grad_mag,grad_theta] = ComputeGradient(pyramid)
 %                                                                         %
 %                                YOUR CODE HERE  
 %
-
+        % step 1
+        img_dx = filter2([-1 0 1], currentImage);
+        img_dy = filter2([-1;0;1], currentImage);
+        % step 2
+        for y=1:size(currentImage,1)
+            for x=1:size(currentImage,2)
+                dx = img_dx(y, x);
+                dy = img_dy(y, x);
+                grad_mag{scale}(y, x) = sqrt(dx * dx + dy * dy);
+                angle = atan2(dy, dx);
+                % step 3
+                grad_theta{scale}(y, x) = angle - pi;
+            end
+        end        
 %                                                                         %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
         % atan2 gives angles from -pi to pi. To make the histogram code
         % easier, we'll change that to 0 to 2*pi.
@@ -232,12 +241,17 @@ function norm_angles = Normalize_Orientation(gradient_magnitudes, gradient_angle
 %                                YOUR CODE HERE:  
 %
 %
+    % step 1
+    [histogram, angles] = ComputeGradientHistogram(num_bins, gradient_magnitudes, gradient_angles);
+    % step 2
+    [~, idx] = max(histogram);
+    direction = angles(idx);
+    % step 3
+    norm_angles = gradient_angles - direction;
 %
 %                                                                              %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    
-
- 
 
    % This line will re-map norm_theta into the range 0 to 2*pi
    norm_angles = mod(norm_angles, 2*pi);
@@ -272,13 +286,18 @@ function [histogram, angles] = ComputeGradientHistogram(num_bins, gradient_magni
     angle_step = 2 * pi / num_bins;
     angles = 0 : angle_step : (2*pi-angle_step);
     histogram = zeros(1, num_bins);
-    
 
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                              %
 %                                YOUR CODE HERE:                               %
 %        
+    for i=1:numel(gradient_angles)
+        angle = gradient_angles(i);
+        magn = gradient_magnitudes(i);
+        index = floor(angle / angle_step) + 1;
+        histogram(index) = histogram(index) + magn;
+    end
 %
 %                                                                              %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -307,10 +326,21 @@ function descriptor = ComputeSIFTDescriptor...
 %         Compute the gradient histograms and concatenate them in the          %
 %  feature variable to form a size 1x128 SIFT descriptor for this keypoint.    %
 %                                                                              %
-%            HINT: Use the ComputeGradientHistogram function below.            %
+%            HINT: Use the ComputeGradientHistogram function below.
+        index = 0;
+       for y=1:pixelsPerCell:size(patch_theta, 1)
+           for x=1:pixelsPerCell:size(patch_theta, 2)
+               cell_theta = patch_theta(y:y+pixelsPerCell-1, x:x+pixelsPerCell-1);
+               cell_magn = patch_mag(y:y+pixelsPerCell-1, x:x+pixelsPerCell-1);
+               [cell_histogram, ~] = ComputeGradientHistogram(num_bins, cell_magn, cell_theta);
+               descriptor(index*num_bins+1:(index+1)*num_bins) = cell_histogram;
+               index = index + 1;
+           end
+       end
+           
 %                                                                              %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+    
 end
 
     
