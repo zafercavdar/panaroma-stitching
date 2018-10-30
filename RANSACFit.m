@@ -68,7 +68,10 @@ function H_best = RANSACFit(p1, p2, match, seedSampleSize, maxInlierError, goodF
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %                                                                   %
-    %                     YOUR CODE HERE:                                              %
+    %                     YOUR CODE HERE:                               %
+    sfr = (1 - w^n); % single fail ratio
+    maxIter = ceil(log10(p_fail) / log10(sfr));
+    disp(maxIter);
     %                                                                   %
     %                                                                   %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -100,7 +103,6 @@ function H_best = RANSACFit(p1, p2, match, seedSampleSize, maxInlierError, goodF
         % to complete it.
 
         H = ComputeAffineMatrix( p1(seed_group(:, 1), :), p2(seed_group(:, 2), :) );
-        
 
         % =================================================== 
         % Step 2: 
@@ -108,8 +110,10 @@ function H_best = RANSACFit(p1, p2, match, seedSampleSize, maxInlierError, goodF
         % Use non_seed_group to compute error from eucledian distance i.e. 
         % ||p1'-H*p||. Use the ComputeError function below. It is partially 
         % coded. You need to complete it.  
-
-        err = ComputeError(H, p1(non_seed_group(:, 1), :), p2(non_seed_group(:, 2),:));
+        
+        pt1 = p1(non_seed_group(:, 1), :);
+        pt2 = p2(non_seed_group(:, 2), :);
+        err = ComputeError(H, pt1, pt2);
     
 
         %=======================================================
@@ -122,11 +126,12 @@ function H_best = RANSACFit(p1, p2, match, seedSampleSize, maxInlierError, goodF
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %                                                                 %
         %                     YOUR CODE HERE:                             %
-        %                                                                 %
+        %
+        logical_arr = err' < maxInlierError;
+        inliers = pt1(logical_arr, :);
+        p2_inliers = pt2(logical_arr, :);
         %                                                                 %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        
         
         number_of_inliers = size(inliers,1) + size(seed_group,1); 
         if( number_of_inliers > goodFitThresh )
@@ -142,14 +147,22 @@ function H_best = RANSACFit(p1, p2, match, seedSampleSize, maxInlierError, goodF
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %                                                             %
             %                     YOUR CODE HERE:                         %
+            H_candidate = ComputeAffineMatrix(inliers, p2_inliers);
+            fitting_err = norm(ComputeError(H_candidate, inliers, p2_inliers));
+            if fitting_err < min_error
+                disp('new minima');
+                disp(fitting_err);
+                min_error = fitting_err;
+                H_best = H_candidate;
+            end
             %                                                             %
             %                                                             %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+            
         end
 
     end
-    
+    disp(H_best);
     if sum(sum((H_best - eye(3)).^2)) == 0,
         disp('No RANSAC fit was found.')
     end
@@ -194,6 +207,8 @@ function H = ComputeAffineMatrix( Pt1, Pt2 )
 %                                YOUR CODE HERE:                               %
 %        Use MATLAB's "A\b" syntax to solve for H_transpose as discussed       %
 %                     above, then convert it to the final H                    %
+    H_transpose = P1'\P2';
+    H = H_transpose';
 %                                                                              %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
@@ -215,7 +230,6 @@ function dists = ComputeError(H, pt1, pt2)
 %      pt2.
 %   pt1: N1 x 2 matrix where each ROW is a data point [x_i, y_i]
 %   pt2: N2 x 2 matrix where each ROW is a data point [x_i, y_i]
-%   match: M x 2 matrix, each row represents a match [index of pt1, index of pt2]
 %
 % Output:
 %    dists: An M x 1 vector where dists(i) is the error of fitting the i-th
@@ -231,6 +245,19 @@ function dists = ComputeError(H, pt1, pt2)
 %           Convert the points to a usable format, perform the                 %
 %           transformation on pt1 points, and find their distance to their     %
 %           MATCHING pt2 points.                                               %
+    N = size(pt1, 1);
+    trans_p1 = [pt1'; ones(1, N)]; % 3 x N
+    calc_p2 = H * trans_p1; % 3 x N
+    homogeneous_p2 = [];
+    for i=1:size(calc_p2, 2)
+        scalar = calc_p2(3, i);
+        homop = [calc_p2(1,i) / scalar; calc_p2(2,i) / scalar];
+        homogeneous_p2 = [homogeneous_p2, homop];
+    end
+    diff = homogeneous_p2 - pt2'; % 2 x N
+    norms = vecnorm(diff); % 1 x N
+    dists = norms';
+    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % hint: If you have an array of indices, MATLAB can directly use it to
     % index into another array. For example, pt1(match(:, 1),:) returns a
