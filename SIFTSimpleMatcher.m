@@ -29,7 +29,22 @@ function match = SIFTSimpleMatcher(descriptor1, descriptor2, thresh)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                              %
 %                                YOUR CODE HERE:                               %
-%                                                                              %
+    n1 = size(descriptor1, 1);
+    n2 = size(descriptor2, 1);
+    for i=1:n1
+        ref_descriptor = descriptor1(i, :);
+        distances = zeros(1, n2);
+        for j=1:n2
+            comp_descriptor = descriptor2(j, :);
+            euclidean_dist = norm(ref_descriptor - comp_descriptor);
+            distances(j) = euclidean_dist;
+        end
+        [min1, idx] = min(distances);
+        [min2, ~] = min(distances(distances>min(distances)));
+        if min1 <= thresh * min2
+            match = [match ; [i, idx]];
+        end
+    end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+    
 end
