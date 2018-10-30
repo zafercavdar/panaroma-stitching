@@ -166,6 +166,15 @@ function T = makeTransformToReferenceFrame(i_To_iPlusOne_Transform, currentFrame
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                              %
 %                 YOUR CODE HERE: Calculate T as defined above.                %
+    if currentFrameIndex == refFrameIndex
+        T = eye(3);
+    elseif currentFrameIndex < refFrameIndex
+        T = makeTransformToReferenceFrame(i_To_iPlusOne_Transform, currentFrameIndex + 1,refFrameIndex) * ...
+                                          i_To_iPlusOne_Transform{currentFrameIndex};
+    else
+        T = makeTransformToReferenceFrame(i_To_iPlusOne_Transform, currentFrameIndex - 1,refFrameIndex) * ...
+                                          pinv(i_To_iPlusOne_Transform{currentFrameIndex - 1});        
+    end
 %                                                                              %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
