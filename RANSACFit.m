@@ -128,12 +128,11 @@ function H_best = RANSACFit(p1, p2, match, seedSampleSize, maxInlierError, goodF
         %                     YOUR CODE HERE:                             %
         %
         logical_arr = err' < maxInlierError;
-        inliers = pt1(logical_arr, :);
-        p2_inliers = pt2(logical_arr, :);
+        inliers = non_seed_group(logical_arr, :);
         %                                                                 %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        number_of_inliers = size(inliers,1) + size(seed_group,1); 
+        number_of_inliers = size(inliers,1); + size(seed_group,1); 
         if( number_of_inliers > goodFitThresh )
 
 			% =================================================
@@ -147,8 +146,11 @@ function H_best = RANSACFit(p1, p2, match, seedSampleSize, maxInlierError, goodF
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %                                                             %
             %                     YOUR CODE HERE:                         %
-            H_candidate = ComputeAffineMatrix(inliers, p2_inliers);
-            fitting_err = norm(ComputeError(H_candidate, inliers, p2_inliers));
+            
+            p1_inliers = [p1(inliers(:, 1), :) ; p1(seed_group(:, 1), :)];
+            p2_inliers = [p2(inliers(:, 2), :) ; p2(seed_group(:, 2), :)];
+            H_candidate = ComputeAffineMatrix(p1_inliers, p2_inliers);
+            fitting_err = norm(ComputeError(H_candidate, p1_inliers, p2_inliers));
             if fitting_err < min_error
                 disp('new minima');
                 disp(fitting_err);
